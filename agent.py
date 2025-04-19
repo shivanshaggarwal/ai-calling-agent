@@ -224,14 +224,21 @@ class AICallingAgent:
             if "bye" in user_input.lower():
                 break
 
-    def make_outbound_call(self, to_number: str, twiml_url: str):
+    def make_outbound_call(self, to_number: str, twiml_url: str, status_callback: str = None):
         """Make an outbound call using Twilio"""
         try:
-            call = self.twilio_client.calls.create(
-                to=to_number,
-                from_=self.twilio_phone_number,
-                url=twiml_url
-            )
+            call_params = {
+                'to': to_number,
+                'from_': self.twilio_phone_number,
+                'url': twiml_url
+            }
+            
+            # Add status callback if provided
+            if status_callback:
+                call_params['status_callback'] = status_callback
+                call_params['status_callback_event'] = ['initiated', 'ringing', 'answered', 'completed']
+            
+            call = self.twilio_client.calls.create(**call_params)
             print(f"Call initiated with SID: {call.sid}")
             return call.sid
         except Exception as e:
@@ -253,7 +260,7 @@ if __name__ == "__main__":
     # Example usage
     agent = AICallingAgent()
     twiml = agent.generate_twiml("Hello, this is an automated call.")
-    call_sid = agent.make_outbound_call("+1234567890", "https://your-server.com/twiml")
+    call_sid = agent.make_outbound_call("+919911324046", "https://your-server.com/twiml")
     # For Hindi
     # agent.set_language("hi")
     

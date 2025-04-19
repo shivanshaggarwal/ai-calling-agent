@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 import logging
 from twilio.base.exceptions import TwilioRestException
+from urllib.parse import quote
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -28,17 +29,26 @@ def main():
             
         # The Render URL
         render_url = 'https://ai-calling-agent-a35z.onrender.com'
-        twiml_url = f'{render_url}/twiml?text=Hello, this is a test call from the AI calling agent.'
         
-        logger.info(f"Making call to {to_number} using TwiML URL: {twiml_url}")
+        # Set up the TwiML URL and status callback URL
+        twiml_url = f'{render_url}/twiml'
+        status_callback_url = f'{render_url}/status-callback'
+        
+        logger.info(f"Making call to {to_number}")
+        logger.info(f"TwiML URL: {twiml_url}")
+        logger.info(f"Status Callback URL: {status_callback_url}")
         
         # Verify Twilio credentials
         if not agent.twilio_account_sid or not agent.twilio_auth_token:
             logger.error("Twilio credentials not properly set in .env file")
             return
             
-        # Make the call
-        call_sid = agent.make_outbound_call(to_number, twiml_url)
+        # Make the call with status callback
+        call_sid = agent.make_outbound_call(
+            to_number=to_number,
+            twiml_url=twiml_url,
+            status_callback=status_callback_url
+        )
         
         if call_sid:
             logger.info(f"Call initiated successfully! Call SID: {call_sid}")
