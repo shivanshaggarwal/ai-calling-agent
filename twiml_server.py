@@ -15,6 +15,10 @@ app = Flask(__name__)
 # Store conversation state
 conversation_state = {}
 
+@app.route('/')
+def index():
+    return "AI Calling Agent is running!"
+
 @app.route('/twiml', methods=['GET'])
 def get_twiml():
     try:
@@ -35,15 +39,7 @@ def get_twiml():
         state = conversation_state[call_sid]
         
         # Generate TwiML based on the current stage
-        if state["stage"] == "greeting":
-            twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Gather input="speech" action="/handle-input" method="POST">
-        <Say>{state["last_response"]}</Say>
-    </Gather>
-</Response>"""
-        else:
-            twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Gather input="speech" action="/handle-input" method="POST">
         <Say>{state["last_response"]}</Say>
@@ -88,7 +84,6 @@ def handle_input():
         })
         
         # Process the input and generate response
-        # This is a simple example - in a real implementation, you would use your AI model
         if "bye" in speech_result.lower():
             response = "Goodbye! Thank you for calling."
             state["stage"] = "end"

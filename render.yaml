@@ -13,4 +13,6 @@ services:
         sync: false
       - key: TWILIO_PHONE_NUMBER
         sync: false
-    healthCheckPath: /health 
+    healthCheckPath: /health
+    autoDeploy: true
+    plan: free 
