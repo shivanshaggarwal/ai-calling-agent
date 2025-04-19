@@ -224,25 +224,32 @@ class AICallingAgent:
             if "bye" in user_input.lower():
                 break
 
-    def make_outbound_call(self, to_number: str, twiml_url: str, status_callback: str = None):
+    def make_outbound_call(self, to_number: str, twiml_url: str):
         """Make an outbound call using Twilio"""
         try:
+            # For trial accounts, we need to use a verified phone number
+            if not to_number.startswith('+'):
+                to_number = '+91' + to_number  # Assuming Indian number
+            
             call_params = {
                 'to': to_number,
                 'from_': self.twilio_phone_number,
-                'url': twiml_url
+                'url': twiml_url,
+                'status_callback': f'{twiml_url}/status-callback',
+                'status_callback_event': ['initiated', 'ringing', 'answered', 'completed']
             }
             
-            # Add status callback if provided
-            if status_callback:
-                call_params['status_callback'] = status_callback
-                call_params['status_callback_event'] = ['initiated', 'ringing', 'answered', 'completed']
+            # Log the call parameters (excluding sensitive data)
+            print(f"Making call to {to_number}")
+            print(f"Using TwiML URL: {twiml_url}")
             
             call = self.twilio_client.calls.create(**call_params)
             print(f"Call initiated with SID: {call.sid}")
             return call.sid
         except Exception as e:
             print(f"Error making outbound call: {e}")
+            if hasattr(e, 'code') and e.code == 21205:
+                print("This error usually means the phone number is not verified. Please verify your phone number in the Twilio console.")
             return None
 
     def generate_twiml(self, text: str) -> str:

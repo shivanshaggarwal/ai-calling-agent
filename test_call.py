@@ -30,24 +30,21 @@ def main():
         # The Render URL
         render_url = 'https://ai-calling-agent-a35z.onrender.com'
         
-        # Set up the TwiML URL and status callback URL
+        # Set up the TwiML URL
         twiml_url = f'{render_url}/twiml'
-        status_callback_url = f'{render_url}/status-callback'
         
         logger.info(f"Making call to {to_number}")
         logger.info(f"TwiML URL: {twiml_url}")
-        logger.info(f"Status Callback URL: {status_callback_url}")
         
         # Verify Twilio credentials
         if not agent.twilio_account_sid or not agent.twilio_auth_token:
             logger.error("Twilio credentials not properly set in .env file")
             return
             
-        # Make the call with status callback
+        # Make the call
         call_sid = agent.make_outbound_call(
             to_number=to_number,
-            twiml_url=twiml_url,
-            status_callback=status_callback_url
+            twiml_url=twiml_url
         )
         
         if call_sid:
@@ -58,6 +55,8 @@ def main():
     except TwilioRestException as e:
         logger.error(f"Twilio API Error: {str(e)}")
         logger.error(f"More info: {e.uri}")
+        if e.code == 21205:
+            logger.error("This error usually means the phone number is not verified. Please verify your phone number in the Twilio console.")
     except Exception as e:
         logger.error(f"Error in test_call: {str(e)}")
 
