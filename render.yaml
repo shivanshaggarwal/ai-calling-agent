@@ -12,4 +12,5 @@ services:
       - key: TWILIO_AUTH_TOKEN
         sync: false
       - key: TWILIO_PHONE_NUMBER
-        sync: false 
+        sync: false
+    healthCheckPath: /health 

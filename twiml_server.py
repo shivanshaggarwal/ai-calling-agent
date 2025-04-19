@@ -1,16 +1,13 @@
 from flask import Flask, request, Response
-from agent import AICallingAgent
 import os
 from dotenv import load_dotenv
 import logging
-from waitress import serve
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-agent = AICallingAgent()
 
 @app.route('/twiml', methods=['GET'])
 def get_twiml():
@@ -20,7 +17,10 @@ def get_twiml():
         logger.info(f"Generating TwiML for text: {text}")
         
         # Generate TwiML response
-        twiml = agent.generate_twiml(text)
+        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say>{text}</Say>
+</Response>"""
         
         # Return as XML response
         return Response(twiml, mimetype='text/xml')
@@ -39,6 +39,6 @@ def health_check():
 if __name__ == '__main__':
     load_dotenv()
     # Get port from environment variable or use default
-    port = int(os.getenv('PORT', 5000))
-    # Run the server using waitress for production
-    serve(app, host='0.0.0.0', port=port) 
+    port = int(os.getenv('PORT', 10000))
+    # Run the server
+    app.run(host='0.0.0.0', port=port) 
