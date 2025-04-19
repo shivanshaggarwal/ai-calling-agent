@@ -17,15 +17,18 @@ conversation_state = {}
 
 @app.route('/')
 def index():
+    logger.info("Received request to root endpoint")
     return "AI Calling Agent is running!"
 
 @app.route('/twiml', methods=['GET'])
 def get_twiml():
     try:
+        logger.info("Received TwiML request")
         # Get the call SID from the request
         call_sid = request.args.get('CallSid')
         if not call_sid:
             call_sid = f"call-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            logger.info(f"Generated new call SID: {call_sid}")
             
         # Initialize conversation state if not exists
         if call_sid not in conversation_state:
@@ -34,6 +37,7 @@ def get_twiml():
                 "last_response": "Hello! I am your AI assistant. How can I help you today?",
                 "history": []
             }
+            logger.info(f"Initialized new conversation state for call {call_sid}")
             
         # Get the current state
         state = conversation_state[call_sid]
@@ -59,11 +63,15 @@ def get_twiml():
 @app.route('/handle-input', methods=['POST'])
 def handle_input():
     try:
+        logger.info("Received handle-input request")
         # Get the call SID and speech result
         call_sid = request.form.get('CallSid')
         speech_result = request.form.get('SpeechResult', '')
         
+        logger.info(f"Processing input for call {call_sid}: {speech_result}")
+        
         if not call_sid:
+            logger.warning("No CallSid provided in request")
             return Response(
                 '<?xml version="1.0" encoding="UTF-8"?><Response><Say>Sorry, I could not process your request.</Say></Response>',
                 mimetype='text/xml'
@@ -141,6 +149,7 @@ def status_callback():
         if call_status in ['completed', 'failed', 'busy', 'no-answer']:
             if call_sid in conversation_state:
                 del conversation_state[call_sid]
+                logger.info(f"Cleaned up conversation state for call {call_sid}")
                 
         return Response("OK", status=200)
     except Exception as e:
@@ -149,11 +158,13 @@ def status_callback():
 
 @app.route('/health', methods=['GET'])
 def health_check():
+    logger.info("Health check requested")
     return Response("OK", status=200)
 
 if __name__ == '__main__':
     load_dotenv()
     # Get port from environment variable or use default
     port = int(os.getenv('PORT', 10000))
+    logger.info(f"Starting server on port {port}")
     # Run the server
     app.run(host='0.0.0.0', port=port) 

@@ -14,5 +14,8 @@ services:
       - key: TWILIO_PHONE_NUMBER
         sync: false
     healthCheckPath: /health
+    healthCheckTimeoutSeconds: 30
+    healthCheckIntervalSeconds: 60
+    healthCheckThreshold: 3
     autoDeploy: true
     plan: free 
