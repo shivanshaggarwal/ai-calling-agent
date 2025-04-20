@@ -1,6 +1,5 @@
 import whisper
 from gtts import gTTS
-import sounddevice as sd
 import numpy as np
 from pathlib import Path
 import tempfile
@@ -14,14 +13,17 @@ from datetime import datetime
 from twilio.rest import Client
 from dotenv import load_dotenv
 
+# Try to import sounddevice, but don't fail if it's not available
 try:
+    import sounddevice as sd
     import soundfile as sf
     sounddevice_available = True
-except OSError:
+except (ImportError, OSError):
     sounddevice_available = False
+    print("Warning: sounddevice not available. Running in server mode.")
 
 class AICallingAgent:
-    def __init__(self):
+    def __init__(self, server_mode=False):
         # Load environment variables
         load_dotenv()
         
@@ -31,21 +33,25 @@ class AICallingAgent:
         self.twilio_phone_number = os.getenv('TWILIO_PHONE_NUMBER')
         self.twilio_client = Client(self.twilio_account_sid, self.twilio_auth_token)
         
-        # Initialize Whisper model for speech recognition
-        self.whisper_model = whisper.load_model("base")
-        self.language = "en"  # default language
-        self.temp_dir = Path(tempfile.gettempdir())
+        # Set server mode
+        self.server_mode = server_mode or not sounddevice_available
         
-        # Set FFmpeg path
-        ffmpeg_path = Path("ffmpeg-2025-04-17-git-7684243fbe-full_build/bin/ffmpeg.exe")
-        if not ffmpeg_path.exists():
-            ffmpeg_path = Path("ffmpeg/bin/ffmpeg.exe")
-        if ffmpeg_path.exists():
-            os.environ["PATH"] = str(ffmpeg_path.parent) + os.pathsep + os.environ["PATH"]
+        if not self.server_mode:
+            # Initialize Whisper model for speech recognition
+            self.whisper_model = whisper.load_model("base")
+            self.temp_dir = Path(tempfile.gettempdir())
+            
+            # Set FFmpeg path
+            ffmpeg_path = Path("ffmpeg-2025-04-17-git-7684243fbe-full_build/bin/ffmpeg.exe")
+            if not ffmpeg_path.exists():
+                ffmpeg_path = Path("ffmpeg/bin/ffmpeg.exe")
+            if ffmpeg_path.exists():
+                os.environ["PATH"] = str(ffmpeg_path.parent) + os.pathsep + os.environ["PATH"]
             
         # Initialize conversation context
         self.conversation_history: List[Dict[str, str]] = []
         self.context_window = 5  # Number of previous messages to keep in context
+        self.language = "en"  # default language
         
         # Initialize Ollama with Mistral
         self.ollama_model = "mistral"  # Using Mistral model
@@ -84,9 +90,10 @@ class AICallingAgent:
 
     def listen(self, duration: int = 5) -> str:
         """Record audio and convert to text"""
-        if not sounddevice_available:
-            print("Warning: sounddevice not available, skipping recording.")
+        if self.server_mode:
+            print("Warning: Running in server mode, audio recording not available")
             return ""
+            
         print(f"Recording for {duration} seconds...")
         
         # Record audio
@@ -108,6 +115,10 @@ class AICallingAgent:
 
     def speak(self, text: str, output_file: Optional[str] = None):
         """Convert text to speech"""
+        if self.server_mode:
+            print("Warning: Running in server mode, speech synthesis not available")
+            return ""
+            
         # Detect language of the response
         response_lang = self.detect_language(text)
         
@@ -209,6 +220,10 @@ class AICallingAgent:
 
     def run_conversation(self, duration: int = 5):
         """Run a full conversation loop"""
+        if self.server_mode:
+            print("Warning: Running in server mode, interactive conversation not available")
+            return
+            
         print("Starting conversation...")
         print("You can speak in either English or Hindi.")
         print("Say 'bye' to end the conversation.")
@@ -262,10 +277,6 @@ class AICallingAgent:
 
     def generate_twiml(self, text: str) -> str:
         """Generate TwiML for the call"""
-        # Convert text to speech and get the URL
-        speech_file = self.speak(text)
-        # In a real implementation, you would upload this file to a web server
-        # and return the URL. For now, we'll return a simple TwiML response
         return f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say>{text}</Say>
