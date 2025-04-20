@@ -1,7 +1,6 @@
 import whisper
 from gtts import gTTS
 import sounddevice as sd
-import soundfile as sf
 import numpy as np
 from pathlib import Path
 import tempfile
@@ -14,6 +13,12 @@ import ollama
 from datetime import datetime
 from twilio.rest import Client
 from dotenv import load_dotenv
+
+try:
+    import soundfile as sf
+    sounddevice_available = True
+except OSError:
+    sounddevice_available = False
 
 class AICallingAgent:
     def __init__(self):
@@ -79,6 +84,9 @@ class AICallingAgent:
 
     def listen(self, duration: int = 5) -> str:
         """Record audio and convert to text"""
+        if not sounddevice_available:
+            print("Warning: sounddevice not available, skipping recording.")
+            return ""
         print(f"Recording for {duration} seconds...")
         
         # Record audio
