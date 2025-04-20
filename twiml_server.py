@@ -64,6 +64,9 @@ def get_twiml():
 def handle_input():
     try:
         logger.info("Received handle-input request")
+        # Log all form data for debugging
+        logger.info(f"Form data: {request.form}")
+        
         # Get the call SID and speech result
         call_sid = request.form.get('CallSid')
         speech_result = request.form.get('SpeechResult', '')
@@ -84,57 +87,66 @@ def handle_input():
             "history": []
         })
         
-        # Add to conversation history
-        state["history"].append({
-            "role": "user",
-            "content": speech_result,
-            "timestamp": datetime.now().isoformat()
-        })
-        
-        # Process the input and generate response
-        if "bye" in speech_result.lower():
-            response = "Goodbye! Thank you for calling."
-            state["stage"] = "end"
-        elif "help" in speech_result.lower():
-            response = "I can help you with various tasks. What would you like assistance with?"
-            state["stage"] = "help"
-        else:
-            response = f"I understand you said: {speech_result}. How can I assist you further?"
-            state["stage"] = "conversation"
+        try:
+            # Add to conversation history
+            state["history"].append({
+                "role": "user",
+                "content": speech_result,
+                "timestamp": datetime.now().isoformat()
+            })
             
-        # Update the state
-        state["last_response"] = response
-        state["history"].append({
-            "role": "assistant",
-            "content": response,
-            "timestamp": datetime.now().isoformat()
-        })
-        
-        conversation_state[call_sid] = state
-        
-        # Generate TwiML for the next interaction
-        if state["stage"] == "end":
-            twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+            # Process the input and generate response
+            if "bye" in speech_result.lower():
+                response = "Goodbye! Thank you for calling."
+                state["stage"] = "end"
+            elif "help" in speech_result.lower():
+                response = "I can help you with various tasks. What would you like assistance with?"
+                state["stage"] = "help"
+            else:
+                response = f"I understand you said: {speech_result}. How can I assist you further?"
+                state["stage"] = "conversation"
+                
+            # Update the state
+            state["last_response"] = response
+            state["history"].append({
+                "role": "assistant",
+                "content": response,
+                "timestamp": datetime.now().isoformat()
+            })
+            
+            conversation_state[call_sid] = state
+            
+            # Generate TwiML for the next interaction
+            if state["stage"] == "end":
+                twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say>{response}</Say>
     <Hangup/>
 </Response>"""
-        else:
-            twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+            else:
+                twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Gather input="speech" action="/handle-input" method="POST">
         <Say>{response}</Say>
     </Gather>
 </Response>"""
+                
+            logger.info(f"Successfully processed input for call {call_sid}")
+            return Response(twiml, mimetype='text/xml')
             
-        logger.info(f"Processed input for call {call_sid}: {speech_result}")
-        return Response(twiml, mimetype='text/xml')
+        except Exception as e:
+            logger.error(f"Error processing conversation state: {str(e)}")
+            # Return a simple response in case of state processing error
+            return Response(
+                '<?xml version="1.0" encoding="UTF-8"?><Response><Gather input="speech" action="/handle-input" method="POST"><Say>I apologize, but I encountered an error. Please try speaking again.</Say></Gather></Response>',
+                mimetype='text/xml'
+            )
+            
     except Exception as e:
-        logger.error(f"Error handling input: {str(e)}")
+        logger.error(f"Error in handle-input endpoint: {str(e)}")
         return Response(
-            '<?xml version="1.0" encoding="UTF-8"?><Response><Say>Sorry, there was an error processing your input.</Say></Response>',
-            mimetype='text/xml',
-            status=500
+            '<?xml version="1.0" encoding="UTF-8"?><Response><Gather input="speech" action="/handle-input" method="POST"><Say>I apologize, but I encountered an error. Please try speaking again.</Say></Gather></Response>',
+            mimetype='text/xml'
         )
 
 @app.route('/status-callback', methods=['POST'])
